@@ -6,14 +6,14 @@
 
 #define MAXLINELENGTH 1000
 
-#define ADD  0x00000000
-#define NOR  0x00400000
-#define LW   0x00800000
-#define SW   0x00C00000
-#define BEQ  0x01000000
-#define JALR 0x01400000
-#define HALT 0x01800000
-#define NOOP 0x01C00000
+#define ADD  0
+#define NOR  1
+#define LW   2
+#define SW   3
+#define BEQ  4
+#define JALR 5
+#define HALT 6
+#define NOOP 7
 
 int readAndParse(FILE *, char *, char *, char *, char *, char *);
 int isNumber(char *);
@@ -81,65 +81,75 @@ int main(int argc, char *argv[])
 		if (!readAndParse(inFilePtr, label, opcode, arg0, arg1, arg2)){
 			break;
 		}
+		
 		int instruction = 0;
 
-		if(!strcmp(opcode, "add")){
-			int rd = atoi(arg0);
-			int rs = atoi(arg1);
-			int rt = atoi(arg2);
-			instruction = ADD | (rd << 19) | (rs << 16) | rt;
+		if (!strcmp(opcode, "add")){
+			int regA = atoi(arg0);
+			int regB = atoi(arg1);
+			int destReg = atoi(arg2);
+
+			instruction = (ADD << 22) | (regA << 19) | (regB << 16) | destReg;
 		} else if (!strcmp(opcode, "nor")){
-			int rd = atoi(arg0);
-			int rs = atoi(arg1);
-			int rt = atoi(arg2);
-			instruction = NOR | (rd << 19) | (rs << 16) | rt;
+			int regA = atoi(arg0);
+			int regB = atoi(arg1);
+			int destReg = atoi(arg2);
+
+			instruction = (NOR << 22) | (regA << 19) | (regB << 16) | destReg;
 		} else if (!strcmp(opcode, "lw")){
-			int rd = atoi(arg0);
-			int rs = atoi(arg1);
+			int regA = atoi(arg0);
+			int regB = atoi(arg1);
 			int offset = atoi(arg2);
-			if (offset < -32768 || offset > 32767){
-				printf("error: offset is out of range\n");
+
+			if(offset < -32768 || offset > 32767){
+				printf("error: offset out of range\n");
 				exit(1);
 			}
-			instruction = LW | (rd << 19) | (rs << 16) | offset;
+
+			instruction = (LW << 22) | (regA << 19) | (regB << 16) | offset;
 		} else if (!strcmp(opcode, "sw")){
-			int rd = atoi(arg0);
-			int rs = atoi(arg1);
+			int regA = atoi(arg0);
+			int regB = atoi(arg1);
 			int offset = atoi(arg2);
-			if (offset < -32768 || offset > 32767){
-				printf("error: offset is out of range\n");
+
+			if(offset < -32768 || offset > 32767){
+				printf("error: offset out of range\n");
 				exit(1);
 			}
-			instruction = SW | (rd << 19) | (rs << 16) | offset;
+
+			instruction = (SW << 22) | (regA << 19) | (regB << 16) | offset;
 		} else if (!strcmp(opcode, "beq")){
-			int rs = atoi(arg0);
-			int rt = atoi(arg1);
+			int regA = atoi(arg0);
+			int regB = atoi(arg1);
 			int offset = 0;
 			for (int i = 0; i < labelCount; i++){
 				if (!strcmp(arg2, labelTable[i])){
 					offset = labelAddress[i] - address - 1;
+					break;
 				}
 			}
 
-			if (offset < -32768 || offset > 32767)
-			{
-				printf("error: offset is out of range\n");
+			if (offset < -32768 || offset > 32767){
+				printf("error: offset out of range\n");
 				exit(1);
 			}
-			
-			instruction = BEQ | (rs << 19) | (rt << 16) | offset;
+
+			instruction = (BEQ << 22) | (regA << 19) | (regB << 16) | offset;
 		} else if (!strcmp(opcode, "jalr")){
-			int rs = atoi(arg0);
-			int rd = atoi(arg1);
-			instruction = JALR | (rs << 19) | (rd << 16);
+			int regA = atoi(arg0);
+			int regB = atoi(arg1);
+
+			instruction = (JALR << 22) | (regA << 19) | (regB << 16);
 		} else if (!strcmp(opcode, "halt")){
-			instruction = HALT;
+			instruction = (HALT << 22);
 		} else if (!strcmp(opcode, "noop")){
-			instruction = NOOP;
+			instruction = (NOOP << 22);
 		} else {
-			continue;
+			printf("error: unrecognized opcode %s\n", opcode);
+			exit(1);
 		}
 
+		fprintf(outFilePtr, "%d\n", instruction);
 	}
 
 

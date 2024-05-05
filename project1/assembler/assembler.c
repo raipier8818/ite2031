@@ -99,7 +99,19 @@ int main(int argc, char *argv[])
 		} else if (!strcmp(opcode, "lw")){
 			int regA = atoi(arg0);
 			int regB = atoi(arg1);
-			int offset = atoi(arg2);
+			char* offsetLabel = arg2;
+
+			int offset = 0;
+			if (isNumber(offsetLabel)){
+				offset = atoi(offsetLabel);
+			} else {
+				for (int i = 0; i < labelCount; i++){
+					if (!strcmp(offsetLabel, labelTable[i])){
+						offset = labelAddress[i];
+						break;
+					}
+				}
+			}
 
 			if(offset < -32768 || offset > 32767){
 				printf("error: offset out of range\n");
@@ -144,7 +156,10 @@ int main(int argc, char *argv[])
 			instruction = (HALT << 22);
 		} else if (!strcmp(opcode, "noop")){
 			instruction = (NOOP << 22);
-		} else {
+		} else if (!strcmp(opcode, ".fill")){
+			instruction = atoi(arg0);
+		} 
+		else {
 			printf("error: unrecognized opcode %s\n", opcode);
 			exit(1);
 		}

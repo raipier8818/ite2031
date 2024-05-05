@@ -8,6 +8,7 @@ all : $(TARGET)
  
 $(TARGET): $(OBJS)
 	$(CC) -o $@ $(OBJS)
+	rm -f $(OBJS)
  
 clean :
 	rm -f $(OBJS) $(TARGET)

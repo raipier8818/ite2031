@@ -1,0 +1,1 @@
+make clean && make && ./assembler spec.as spec.mc

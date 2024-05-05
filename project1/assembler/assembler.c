@@ -15,8 +15,17 @@
 #define HALT 6
 #define NOOP 7
 
+int address = 0;
+char *labelTable[1000];
+int labelAddress[1000];
+int labelCount = 0;
+
 int readAndParse(FILE *, char *, char *, char *, char *, char *);
 int isNumber(char *);
+int encodeRType(char *, char *, char *, char *);
+int encodeIType(char *, char *, char *, char *);
+int encodeJType(char *, char *, char *, char *);
+int encodeOType(char *, char *, char *, char *);
 
 int main(int argc, char *argv[]) 
 {
@@ -45,22 +54,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	/* here is an example for how to use readAndParse to read a line from
-		 inFilePtr */
-	// if (!readAndParse(inFilePtr, label, opcode, arg0, arg1, arg2)) {
-	// 	/* reached end of file */
-	// }
-
-	/* TODO: Phase-1 label calculation */
-
-	int address = 0;
-	char* labelTable[1000];
-	int labelAddress[1000];
-	int labelCount = 0;
-
-	memset(labelTable, 0, sizeof(labelTable));
-	memset(labelAddress, 0, sizeof(labelAddress));
 	
+	/* TODO: Phase-1 label calculation */
 	while(1) {
 		label[0] = opcode[0] = arg0[0] = arg1[0] = arg2[0] = '\0';
 		if (!readAndParse(inFilePtr, label, opcode, arg0, arg1, arg2)){
@@ -85,89 +80,26 @@ int main(int argc, char *argv[])
 		
 		int instruction = 0;
 
-		if (!strcmp(opcode, "add")){
-			int regA = atoi(arg0);
-			int regB = atoi(arg1);
-			int destReg = atoi(arg2);
-
-			instruction = (ADD << 22) | (regA << 19) | (regB << 16) | destReg;
-		} else if (!strcmp(opcode, "nor")){
-			int regA = atoi(arg0);
-			int regB = atoi(arg1);
-			int destReg = atoi(arg2);
-
-			instruction = (NOR << 22) | (regA << 19) | (regB << 16) | destReg;
-		} else if (!strcmp(opcode, "lw")){
-			int regA = atoi(arg0);
-			int regB = atoi(arg1);
-			char* offsetLabel = arg2;
-
-			int offset = 0;
-
-			if (isNumber(offsetLabel)){
-				offset = atoi(offsetLabel);
+		if (!strcmp(opcode, "add") || !strcmp(opcode, "nor")){
+			instruction = encodeRType(opcode, arg0, arg1, arg2);
+		} else if (!strcmp(opcode, "lw") || !strcmp(opcode, "sw") || !strcmp(opcode, "beq")){
+			instruction = encodeIType(opcode, arg0, arg1, arg2);
+		} else if (!strcmp(opcode, "jalr")){
+			instruction = encodeJType(opcode, arg0, arg1, arg2);
+		} else if (!strcmp(opcode, "halt") || !strcmp(opcode, "noop")){
+			instruction = encodeOType(opcode, arg0, arg1, arg2);
+		} else if (!strcmp(opcode, ".fill")){
+			if(isNumber(arg0)){
+				instruction = atoi(arg0);
 			} else {
-				for (int i = 0; i < labelCount; i++){
-					if (!strcmp(offsetLabel, labelTable[i])){
-						offset = labelAddress[i];
+				for(int i = 0; i < labelCount; i++){
+					if(!strcmp(arg0, labelTable[i])){
+						instruction = labelAddress[i];
 						break;
 					}
 				}
 			}
-
-			if(offset < -32768 || offset > 32767){
-				printf("error: offset out of range\n");
-				exit(1);
-			}
-
-			offset = offset & 0xFFFF;
-
-			instruction = (LW << 22) | (regA << 19) | (regB << 16) | offset;
-		} else if (!strcmp(opcode, "sw")){
-			int regA = atoi(arg0);
-			int regB = atoi(arg1);
-			int offset = atoi(arg2);
-
-			if(offset < -32768 || offset > 32767){
-				printf("error: offset out of range\n");
-				exit(1);
-			}
-
-			offset = offset & 0xFFFF;
-
-			instruction = (SW << 22) | (regA << 19) | (regB << 16) | offset;
-		} else if (!strcmp(opcode, "beq")){
-			int regA = atoi(arg0);
-			int regB = atoi(arg1);
-			int offset = atoi(arg2);
-			for (int i = 0; i < labelCount; i++){
-				if (!strcmp(arg2, labelTable[i])){
-					offset = labelAddress[i] - address - 1;
-					break;
-				}
-			}
-
-			if (offset < -32768 || offset > 32767){
-				printf("error: offset out of range\n");
-				exit(1);
-			}
-
-			offset = offset & 0xFFFF;
-
-			instruction = (BEQ << 22) | (regA << 19) | (regB << 16) | offset;
-		} else if (!strcmp(opcode, "jalr")){
-			int regA = atoi(arg0);
-			int regB = atoi(arg1);
-
-			instruction = (JALR << 22) | (regA << 19) | (regB << 16);
-		} else if (!strcmp(opcode, "halt")){
-			instruction = (HALT << 22);
-		} else if (!strcmp(opcode, "noop")){
-			instruction = (NOOP << 22);
-		} else if (!strcmp(opcode, ".fill")){
-			instruction = atoi(arg0);
-		} 
-		else {
+		} else {
 			printf("error: unrecognized opcode %s\n", opcode);
 			exit(1);
 		}
@@ -183,7 +115,8 @@ int main(int argc, char *argv[])
 	if (outFilePtr) {
 		fclose(outFilePtr);
 	}
-	return(0);
+	
+	exit(0);
 }
 
 /*
@@ -242,3 +175,144 @@ int isNumber(char *string)
 	return( (sscanf(string, "%d", &i)) == 1);
 }
 
+int encodeRType(char *opcode, char *arg0, char *arg1, char *arg2)
+{
+	/* opcode is add, nor */
+	int instruction = 0;
+	int regA = atoi(arg0);
+	int regB = atoi(arg1);
+	int destReg = atoi(arg2);
+
+	// register integer check
+	if (!isNumber(arg0) || !isNumber(arg1) || !isNumber(arg2)){
+		printf("error: non-integer register arguments\n");
+		exit(1);
+	}
+
+	// register range check
+	if(regA < 0 || regA > 7 || regB < 0 || regB > 7 || destReg < 0 || destReg > 7){
+		printf("error: register out of range\n");
+		exit(1);
+	}
+
+	if (!strcmp(opcode, "add")) {
+		instruction = (ADD << 22) | (regA << 19) | (regB << 16) | destReg;
+	} else if (!strcmp(opcode, "nor")) {
+		instruction = (NOR << 22) | (regA << 19) | (regB << 16) | destReg;
+	} else {
+		printf("error: unrecognized opcode\n");
+		exit(1);
+	}
+
+	return instruction;
+}
+
+int encodeIType(char *opcode, char *arg0, char *arg1, char *arg2)
+{
+	/* opcode is lw, sw, beq */
+	int instruction = 0;
+	int regA = atoi(arg0);
+	int regB = atoi(arg1);
+
+	// register integer check
+	if (!isNumber(arg0) || !isNumber(arg1)){
+		printf("error: non-integer register arguments\n");
+		exit(1);
+	}
+
+	// register range check
+	if(regA < 0 || regA > 7 || regB < 0 || regB > 7){
+		printf("error: register out of range\n");
+		exit(1);
+	}
+	
+	char* offsetLabel = arg2;
+	int offset = -32769;
+	
+	if(isNumber(offsetLabel)){
+		offset = atoi(offsetLabel);
+	} else {
+		// find label in label table
+		for(int i = 0; i < labelCount; i++){
+			if(!strcmp(offsetLabel, labelTable[i])){
+				offset = labelAddress[i];
+				break;
+			}
+		}
+
+		if(offset == -32769){
+			printf("error: use of undefined labels\n");
+			exit(1);
+		}
+
+		if(offset < -32768 || offset > 32767){
+			printf("error: offsetfield does not fit in 16 bits\n");
+			exit(1);
+		}
+
+		if(!strcmp(opcode, "beq")){
+			offset = offset - (address + 1);
+		}
+
+		offset = offset & 0xFFFF;
+	}
+
+	if (!strcmp(opcode, "lw")) {
+		instruction = (LW << 22) | (regA << 19) | (regB << 16) | offset;
+	} else if (!strcmp(opcode, "sw")) {
+		instruction = (SW << 22) | (regA << 19) | (regB << 16) | offset;
+	} else if (!strcmp(opcode, "beq")) {
+		instruction = (BEQ << 22) | (regA << 19) | (regB << 16) | offset;
+	} else {
+		printf("error: unrecognized opcode\n");
+		exit(1);
+	}
+
+	return instruction;
+}
+
+int encodeJType(char *opcode, char *arg0, char *arg1, char *arg2)
+{
+	/* opcode is jalr */
+	int instruction = 0;
+	int regA = atoi(arg0);
+	int regB = atoi(arg1);
+
+	// register integer check
+	if (!isNumber(arg0) || !isNumber(arg1)){
+		printf("error: non-integer register arguments\n");
+		exit(1);
+	}
+
+	// register range check
+	if(regA < 0 || regA > 7 || regB < 0 || regB > 7){
+		printf("error: register out of range\n");
+		exit(1);
+	}
+
+	if (!strcmp(opcode, "jalr")) {
+		instruction = (JALR << 22) | (regA << 19) | (regB << 16);
+	} else {
+		printf("error: unrecognized opcode\n");
+		exit(1);
+	}
+
+	return instruction;
+}
+
+int encodeOType(char *opcode, char *arg0, char *arg1, char *arg2)
+{
+	/* opcode is halt, noop */
+	int instruction = 0;
+
+	if (!strcmp(opcode, "halt")) {
+		instruction = (HALT << 22);
+	} else if (!strcmp(opcode, "noop")) {
+		instruction = (NOOP << 22);
+	} else {
+		printf("error: unrecognized opcode\n");
+		exit(1);
+	}
+
+	return instruction;
+}

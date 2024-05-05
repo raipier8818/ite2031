@@ -76,6 +76,7 @@ int main(int argc, char *argv[])
 
 	rewind(inFilePtr);
 
+	address = 0;
 	while(1){
 		label[0] = opcode[0] = arg0[0] = arg1[0] = arg2[0] = '\0';
 		if (!readAndParse(inFilePtr, label, opcode, arg0, arg1, arg2)){
@@ -102,6 +103,7 @@ int main(int argc, char *argv[])
 			char* offsetLabel = arg2;
 
 			int offset = 0;
+
 			if (isNumber(offsetLabel)){
 				offset = atoi(offsetLabel);
 			} else {
@@ -118,6 +120,8 @@ int main(int argc, char *argv[])
 				exit(1);
 			}
 
+			offset = offset & 0xFFFF;
+
 			instruction = (LW << 22) | (regA << 19) | (regB << 16) | offset;
 		} else if (!strcmp(opcode, "sw")){
 			int regA = atoi(arg0);
@@ -129,11 +133,13 @@ int main(int argc, char *argv[])
 				exit(1);
 			}
 
+			offset = offset & 0xFFFF;
+
 			instruction = (SW << 22) | (regA << 19) | (regB << 16) | offset;
 		} else if (!strcmp(opcode, "beq")){
 			int regA = atoi(arg0);
 			int regB = atoi(arg1);
-			int offset = 0;
+			int offset = atoi(arg2);
 			for (int i = 0; i < labelCount; i++){
 				if (!strcmp(arg2, labelTable[i])){
 					offset = labelAddress[i] - address - 1;
@@ -145,6 +151,8 @@ int main(int argc, char *argv[])
 				printf("error: offset out of range\n");
 				exit(1);
 			}
+
+			offset = offset & 0xFFFF;
 
 			instruction = (BEQ << 22) | (regA << 19) | (regB << 16) | offset;
 		} else if (!strcmp(opcode, "jalr")){
@@ -163,15 +171,11 @@ int main(int argc, char *argv[])
 			printf("error: unrecognized opcode %s\n", opcode);
 			exit(1);
 		}
-
 		fprintf(outFilePtr, "%d\n", instruction);
+		address++;
 	}
 
-
-
 	/* when done, close the files */
-
-
 
 	if (inFilePtr) {
 		fclose(inFilePtr);

@@ -34,6 +34,7 @@ int main(int argc, char *argv[])
 	char label[MAXLINELENGTH], opcode[MAXLINELENGTH], arg0[MAXLINELENGTH], 
 			 arg1[MAXLINELENGTH], arg2[MAXLINELENGTH];
 
+
 	if (argc != 3) {
 		printf("error: usage: %s <assembly-code-file> <machine-code-file>\n",
 				argv[0]);
@@ -46,11 +47,6 @@ int main(int argc, char *argv[])
 	inFilePtr = fopen(inFileString, "r");
 	if (inFilePtr == NULL) {
 		printf("error in opening %s\n", inFileString);
-		exit(1);
-	}
-	outFilePtr = fopen(outFileString, "w");
-	if (outFilePtr == NULL) {
-		printf("error in opening %s\n", outFileString);
 		exit(1);
 	}
 
@@ -67,6 +63,13 @@ int main(int argc, char *argv[])
 		}
 
 		if (label[0] != '\0') {
+			for(int i = 0; i < labelCount; i++){
+				if(!strcmp(label, labelTable[i])){
+					printf("error: duplicate definition of labels\n");
+					exit(1);
+				}
+			}
+
 			labelTable[labelCount] = strdup(label);
 			labelAddress[labelCount] = address;
 			labelCount++;
@@ -76,6 +79,7 @@ int main(int argc, char *argv[])
 
 	rewind(inFilePtr);
 
+	int instructions[MAXLINELENGTH];
 	address = 0;
 	while(1){
 		label[0] = opcode[0] = arg0[0] = arg1[0] = arg2[0] = '\0';
@@ -99,7 +103,13 @@ int main(int argc, char *argv[])
 			instruction = encodeOType(opcode, arg0, arg1, arg2);
 		} else if (!strcmp(opcode, ".fill")){
 			if(isNumber(arg0)){
-				instruction = atoi(arg0);
+				char *endptr;
+				long int value = strtol(arg0, &endptr, 10);
+				if (value < -2147483648 || value > 2147483647 || *endptr != '\0') {
+					printf("error: invalid numeric value\n");
+					exit(1);
+				}
+				instruction = (int)value;
 			} else {
 				for(int i = 0; i < labelCount; i++){
 					if(!strcmp(arg0, labelTable[i])){
@@ -109,11 +119,22 @@ int main(int argc, char *argv[])
 				}
 			}
 		} else {
-			printf("error: unrecognized opcode %s\n", opcode);
+			printf("error: unrecognized opcode\n");
 			exit(1);
 		}
-		fprintf(outFilePtr, "%d\n", instruction);
+		instructions[address] = instruction;
 		address++;
+	}
+
+	outFilePtr = fopen(outFileString, "w");
+	if (outFilePtr == NULL)
+	{
+		printf("error in opening %s\n", outFileString);
+		exit(1);
+	}
+
+	for(int i = 0; i < address; i++){
+		fprintf(outFilePtr, "%d\n", instructions[i]);
 	}
 
 	/* when done, close the files */
@@ -254,17 +275,19 @@ int encodeIType(char *opcode, char *arg0, char *arg1, char *arg2)
 			exit(1);
 		}
 
-		if(offset < -32768 || offset > 32767){
-			printf("error: offsetfield does not fit in 16 bits\n");
-			exit(1);
-		}
 
 		if(!strcmp(opcode, "beq")){
 			offset = offset - (address + 1);
 		}
 
-		offset = offset & 0xFFFF;
 	}
+
+	if(offset < -32768 || offset > 32767){
+		printf("error: offsetfield does not fit in 16 bits\n");
+		exit(1);
+	}
+
+	offset = offset & 0xFFFF;
 
 	if (!strcmp(opcode, "lw")) {
 		instruction = (LW << 22) | (regA << 19) | (regB << 16) | offset;

@@ -61,6 +61,11 @@ int main(int argc, char *argv[])
 		if (!readAndParse(inFilePtr, label, opcode, arg0, arg1, arg2)){
 			break;
 		}
+
+		if (label[0] == '\0' && opcode[0] == '\0' && arg0[0] == '\0' && arg1[0] == '\0' && arg2[0] == '\0') {
+			continue;
+		}
+
 		if (label[0] != '\0') {
 			labelTable[labelCount] = strdup(label);
 			labelAddress[labelCount] = address;
@@ -77,7 +82,11 @@ int main(int argc, char *argv[])
 		if (!readAndParse(inFilePtr, label, opcode, arg0, arg1, arg2)){
 			break;
 		}
-		
+		if (label[0] == '\0' && opcode[0] == '\0' && arg0[0] == '\0' && arg1[0] == '\0' && arg2[0] == '\0')
+		{
+			continue;
+		}
+
 		int instruction = 0;
 
 		if (!strcmp(opcode, "add") || !strcmp(opcode, "nor")){

@@ -60,11 +60,11 @@ for file in $(find $test_dir -name "*.$input_format" | sort -V); do
     # check if the program ran successfully
     if [ $? -eq 1 ]; then
         # check the result file exist
-        if [ ! -f $test_dir/$filename.$result_format ]; then
+        if [ ! -f $test_dir/$filename.$expected_file_format ]; then
             echo "\033[32m$filename PASSED\033[0m \t ($(cat $test_dir/$filename.$log_format))"
             num_of_success=$((num_of_success+1))
         else
-            echo "\033[31m$filename FAILED \t ($test_dir/$filename.$result_format exists)\033[0m"
+            echo "\033[31m$filename FAILED \t ($test_dir/$filename.$expected_file_format exists)\033[0m"
             num_of_fail=$((num_of_fail+1))
         fi
     else
@@ -89,7 +89,7 @@ for file in $(find $test_dir -name "*.$input_format" | sort -V); do
 done
 
 # remove the result file, if you want to keep it, comment this line
-# find $test_dir -name "*.$result_format" -exec rm {} \;
+find $test_dir -name "*.$result_format" -exec rm {} \;
 find $test_dir -name "*.$log_format" -exec rm {} \;
 find $test_dir -name "*.$diff_format" -exec rm {} \;
 

@@ -31,8 +31,7 @@ int main(int argc, char *argv[])
 {
 	char *inFileString, *outFileString;
 	FILE *inFilePtr, *outFilePtr;
-	char label[MAXLINELENGTH], opcode[MAXLINELENGTH], arg0[MAXLINELENGTH], 
-			 arg1[MAXLINELENGTH], arg2[MAXLINELENGTH];
+	char label[MAXLINELENGTH], opcode[MAXLINELENGTH], arg0[MAXLINELENGTH], arg1[MAXLINELENGTH], arg2[MAXLINELENGTH];
 
 
 	if (argc != 3) {
@@ -65,9 +64,19 @@ int main(int argc, char *argv[])
 		if (label[0] != '\0') {
 			for(int i = 0; i < labelCount; i++){
 				if(!strcmp(label, labelTable[i])){
-					printf("error: duplicate definition of labels\n");
+					printf("error: duplicate definition of label\n");
 					exit(1);
 				}
+			}
+
+			if (isNumber(&label[0])){
+				printf("error: invalid label\n");
+				exit(1);
+			}
+
+			if(strlen(label) > 6){
+				printf("error: label too long\n");
+				exit(1);
 			}
 
 			labelTable[labelCount] = strdup(label);
@@ -88,6 +97,9 @@ int main(int argc, char *argv[])
 		}
 		if (label[0] == '\0' && opcode[0] == '\0' && arg0[0] == '\0' && arg1[0] == '\0' && arg2[0] == '\0')
 		{
+			// disable empty line
+			printf("error: invalid opcode\n");
+			exit(1);
 			continue;
 		}
 
@@ -124,6 +136,11 @@ int main(int argc, char *argv[])
 		}
 		instructions[address] = instruction;
 		address++;
+	}
+
+	if (address >= 65536) {
+		printf("error: too many instructions\n");
+		exit(1);
 	}
 
 	outFilePtr = fopen(outFileString, "w");
@@ -215,7 +232,7 @@ int encodeRType(char *opcode, char *arg0, char *arg1, char *arg2)
 
 	// register integer check
 	if (!isNumber(arg0) || !isNumber(arg1) || !isNumber(arg2)){
-		printf("error: non-integer register arguments\n");
+		printf("error: non-integer register argument\n");
 		exit(1);
 	}
 
@@ -246,7 +263,7 @@ int encodeIType(char *opcode, char *arg0, char *arg1, char *arg2)
 
 	// register integer check
 	if (!isNumber(arg0) || !isNumber(arg1)){
-		printf("error: non-integer register arguments\n");
+		printf("error: non-integer register argument\n");
 		exit(1);
 	}
 
@@ -271,7 +288,7 @@ int encodeIType(char *opcode, char *arg0, char *arg1, char *arg2)
 		}
 
 		if(offset == -32769){
-			printf("error: use of undefined labels\n");
+			printf("error: use of undefined label\n");
 			exit(1);
 		}
 
@@ -312,7 +329,7 @@ int encodeJType(char *opcode, char *arg0, char *arg1, char *arg2)
 
 	// register integer check
 	if (!isNumber(arg0) || !isNumber(arg1)){
-		printf("error: non-integer register arguments\n");
+		printf("error: non-integer register argument\n");
 		exit(1);
 	}
 

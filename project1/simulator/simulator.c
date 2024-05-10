@@ -69,7 +69,6 @@ int main(int argc, char *argv[])
         printf("memory[%d]=%d\n", state.numMemory, state.mem[state.numMemory]);
     }
 
-    /* TODO: */
     int lineNum = 0;
     int cnt = 0;
 
@@ -78,6 +77,9 @@ int main(int argc, char *argv[])
         state.reg[i] = 0;
     }
 
+    // initialize pc
+    state.pc = 0;
+
     while(1) {
         printState(&state);
         int instruction = state.mem[state.pc];
@@ -85,9 +87,6 @@ int main(int argc, char *argv[])
         
         int opcode = getOpcode(instruction);
         cnt++;
-        // printf("pc: %d\n", state.pc);
-        // printf("instruction: %d\n", instruction);
-        // printf("opcode: %d\n", opcode);
         
         if (opcode == 0 || opcode == 1){
             // R-type

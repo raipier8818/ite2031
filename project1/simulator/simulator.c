@@ -34,12 +34,12 @@ int getRegB(int instruction) {
 
 // 0-2 bits
 int getDestReg(int instruction) {
-    return instruction & 0x7;
+    return (instruction & 0x7);
 }
 
 // 0-15 bits
 int getOffsetField(int instruction) {
-    return instruction & 0xFFFF;
+    return (instruction & 0xFFFF);
 }
 
 int main(int argc, char *argv[])
@@ -113,30 +113,35 @@ int main(int argc, char *argv[])
                 state.reg[regB] = state.mem[state.reg[regA] + offsetField];
             } else if (opcode == 3){
                 // sw
+                if (state.reg[regA] + offsetField < 0 || state.reg[regA] + offsetField >= state.numMemory){
+                    printf("Invalid address\n");
+                    exit(1);
+                }
+
                 state.mem[state.reg[regA] + offsetField] = state.reg[regB];
             }else{
                 // beg
                 // offsetField to 16 bits signed
                 offsetField = convertNum(offsetField);
+                
+                if (state.pc + offsetField < 0 || state.pc + offsetField >= state.numMemory){
+                    printf("Invalid address\n");
+                    exit(1);
+                }
+
                 if (state.reg[regA] == state.reg[regB]) {
                     state.pc += offsetField;
                 }
             }
-        }
-        else if(opcode == 4){
-            // beq
-            int regA = getRegA(instruction);
-            int regB = getRegB(instruction);
-            int offsetField = getOffsetField(instruction);
-
-            if (state.reg[regA] == state.reg[regB]) {
-                state.pc += offsetField;
-            }
-        }
-        else if(opcode == 5){
+        }else if(opcode == 5){
             // jalr
             int regA = getRegA(instruction);
             int regB = getRegB(instruction);
+
+            if (state.reg[regA] > state.numMemory || state.reg[regA] < 0){
+                printf("Invalid address\n");
+                exit(1);
+            }
 
             state.reg[regB] = state.pc;
             state.pc = state.reg[regA];

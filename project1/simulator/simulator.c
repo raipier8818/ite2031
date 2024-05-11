@@ -107,25 +107,29 @@ int main(int argc, char *argv[])
             int regA = getRegA(instruction);
             int regB = getRegB(instruction);
             int offsetField = getOffsetField(instruction);
+            // offsetField to 16 bits signed
+            offsetField = convertNum(offsetField);
 
+            
             if (opcode == 2) {
                 // lw
-                state.reg[regB] = state.mem[state.reg[regA] + offsetField];
-            } else if (opcode == 3){
-                // sw
                 if (state.reg[regA] + offsetField < 0 || state.reg[regA] + offsetField >= state.numMemory){
                     printf("Invalid address\n");
                     exit(1);
                 }
-
+                state.reg[regB] = state.mem[state.reg[regA] + offsetField];
+            } else if (opcode == 3){
+                // sw
+                if (state.reg[regA] + offsetField < 0 || state.reg[regA] + offsetField >= state.numMemory)
+                {
+                    printf("Invalid address\n");
+                    exit(1);
+                }
                 state.mem[state.reg[regA] + offsetField] = state.reg[regB];
             }else{
                 // beg
-                // offsetField to 16 bits signed
-                offsetField = convertNum(offsetField);
-                
                 if (state.pc + offsetField < 0 || state.pc + offsetField >= state.numMemory){
-                    printf("Invalid address\n");
+                    printf("Invalid address %d\n", state.pc + offsetField);
                     exit(1);
                 }
 
